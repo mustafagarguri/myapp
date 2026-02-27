@@ -1,0 +1,288 @@
+﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'package:myapp/features/calls/domain/call_status.dart';
+import 'package:myapp/features/calls/presentation/call_state.dart';
+import 'package:myapp/services/api_service.dart';
+import 'package:myapp/widgets/app_logo.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String userName = '';
+  String userBloodType = '';
+  bool isEligible = true;
+  bool isLoading = true;
+
+  final Color primaryRed = const Color(0xFFD32F2F);
+  final Color statusGreen = const Color(0xFF2E7D32);
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    setState(() => isLoading = true);
+
+    try {
+      final response = await ApiService.getUserProfile();
+      final user = _extractUser(response);
+
+      if (!mounted) return;
+      setState(() {
+        final first = (user['first_name'] as String?) ?? '';
+        final last = (user['last_name'] as String?) ?? '';
+        userName = '$first $last'.trim().isEmpty ? 'المستخدم' : '$first $last'.trim();
+
+        final bloodType = user['blood_type'];
+        if (bloodType is Map<String, dynamic>) {
+          userBloodType = (bloodType['name'] as String?) ?? '--';
+        } else {
+          userBloodType = (user['blood_type'] as String?) ?? '--';
+        }
+
+        isEligible = (user['is_available'] as bool?) ?? false;
+      });
+
+      if (mounted) {
+        await context.read<CallState>().loadActiveCall();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('فشل تحميل الملف الشخصي: $e'), backgroundColor: Colors.redAccent),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+  Map<String, dynamic> _extractUser(Map<String, dynamic> response) {
+    final user = response['user'];
+    if (user is Map<String, dynamic>) return user;
+
+    final data = response['data'];
+    if (data is Map<String, dynamic>) {
+      final nested = data['user'];
+      if (nested is Map<String, dynamic>) return nested;
+      return data;
+    }
+
+    return response;
+  }
+
+  Future<void> _logout() async {
+    await ApiService.logout();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFBFBFB),
+      appBar: AppBar(
+        title: const Text('وريد', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+      ),
+      drawer: _buildDrawer(context),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator(color: primaryRed))
+          : RefreshIndicator(
+              onRefresh: _fetchUserData,
+              child: ListView(
+                children: [
+                  _buildHeroSection(),
+                  _buildActiveCallSection(),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: const Text(
+                      'لا توجد قائمة نداءات عامة حالياً في هذا الإصدار. ستظهر النداءات الفعلية عبر الإشعارات والنداء النشط.',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildActiveCallSection() {
+    return Consumer<CallState>(
+      builder: (context, callState, _) {
+        final activeCall = callState.activeCall;
+        if (activeCall == null && callState.error != null) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.red.shade200),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red),
+                const SizedBox(width: 8),
+                Expanded(child: Text('تعذر تحميل النداء النشط: ${callState.error}')),
+                TextButton(
+                  onPressed: _fetchUserData,
+                  child: const Text('إعادة المحاولة'),
+                ),
+              ],
+            ),
+          );
+        }
+        if (activeCall == null) {
+          return const SizedBox.shrink();
+        }
+
+        final goToTracking = activeCall.myStatus == CallStatus.accepted || activeCall.myStatus == CallStatus.arrived;
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.red.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('ندائي النشط', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+              const SizedBox(height: 8),
+              Text('المستشفى: ${activeCall.hospitalName}'),
+              Text('فصيلة الدم: ${activeCall.bloodType}'),
+              Text('حالتك: ${activeCall.myStatus.labelAr}'),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/call-details',
+                          arguments: {'callId': activeCall.id},
+                        );
+                      },
+                      child: const Text('فتح التفاصيل'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          goToTracking ? '/call-tracking' : '/call-details',
+                          arguments: {'callId': activeCall.id},
+                        );
+                      },
+                      child: Text(goToTracking ? 'متابعة الالتزام' : 'الرد الآن'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeroSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isEligible
+              ? [statusGreen.withValues(alpha: 0.8), statusGreen]
+              : [Colors.orange.withValues(alpha: 0.8), Colors.orange],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: (isEligible ? statusGreen : Colors.orange).withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const AppLogo(size: 64),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('مرحباً، $userName', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                Text(
+                  isEligible ? 'أنت مؤهل للتبرع اليوم.' : 'أنت غير متاح للتبرع حالياً.',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: Column(
+        children: [
+          UserAccountsDrawerHeader(
+            decoration: BoxDecoration(color: primaryRed),
+            accountName: Text(userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+            accountEmail: Text('فصيلة الدم: $userBloodType'),
+            currentAccountPicture: const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, color: Color(0xFFD32F2F), size: 45),
+            ),
+          ),
+          ListTile(
+            leading: Icon(Icons.person_outline, color: primaryRed),
+            title: const Text('تعديل الملف الشخصي'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/edit-profile');
+            },
+          ),
+          const Spacer(),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout_rounded, color: Colors.grey),
+            title: const Text('تسجيل الخروج'),
+            onTap: () {
+              Navigator.pop(context);
+              _logout();
+            },
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+}
