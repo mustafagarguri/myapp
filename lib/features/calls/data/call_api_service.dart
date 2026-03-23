@@ -89,6 +89,20 @@ class CallApiService {
     }
   }
 
+  Future<CallDetails?> getActiveCallFromServer() async {
+    try {
+      final response = await _request(method: 'GET', endpoint: CallEndpoints.activeCall);
+      final details = CallDetails.fromBackend(response);
+      if (details.id > 0) {
+        await _localStore.saveActiveCallId(details.id);
+        return details;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<CallDetails> getCallDetails(int callId) async {
     final response = await _request(method: 'GET', endpoint: CallEndpoints.callDetails(callId));
     final details = CallDetails.fromBackend(response);
@@ -138,6 +152,25 @@ class CallApiService {
     );
 
     await _localStore.clearActiveCallId();
+  }
+
+  Future<void> verifyArrivalByQr({
+    required int callId,
+    required String token,
+  }) async {
+    final value = token.trim();
+    if (value.isEmpty) {
+      throw const ApiException('رمز التحقق فارغ.');
+    }
+
+    await _request(
+      method: 'POST',
+      endpoint: CallEndpoints.verifyArrival,
+      body: {
+        'call_id': callId,
+        'token': value,
+      },
+    );
   }
 
   Future<List<TrackingEntry>> getCallTracking(int callId) async {

@@ -279,6 +279,21 @@ class ApiService {
     );
   }
 
+  static Future<List<Map<String, dynamic>>> getDonationLedger() async {
+    final response = await _request(
+      method: 'GET',
+      endpoint: '/donor/ledger',
+      requiresAuth: true,
+    );
+
+    final raw = response['data'] ?? response['ledger'] ?? response['donations'];
+    if (raw is List) {
+      return raw.whereType<Map<String, dynamic>>().toList();
+    }
+
+    return const [];
+  }
+
   // backend الحالي لا يدعم reset password عبر API موبايل مباشر.
   static Future<Map<String, dynamic>> forgotPassword(String email) async {
     throw const ApiException(

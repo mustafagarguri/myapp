@@ -34,7 +34,8 @@ class CallState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      activeCall = await _api.getActiveCall();
+      activeCall = await _api.getActiveCallFromServer();
+      activeCall ??= await _api.getActiveCall();
       if (activeCall != null) {
         await _startRealtime(activeCall!.id);
         _startPolling(activeCall!.id);
@@ -84,6 +85,22 @@ class CallState extends ChangeNotifier {
     tracking = const [];
     await _stopLiveSync();
     notifyListeners();
+  }
+
+  Future<void> verifyArrivalByQr(int callId, String token) async {
+    loading = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      await _api.verifyArrivalByQr(callId: callId, token: token);
+      await loadCallDetails(callId);
+    } catch (e) {
+      error = e.toString();
+      loading = false;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> markExpiredIfNeeded(int callId) async {

@@ -1,6 +1,7 @@
 ﻿enum CallStatus {
   sent,
   accepted,
+  checkedIn,
   rejected,
   waitingList,
   arrived,
@@ -16,6 +17,8 @@ extension CallStatusX on CallStatus {
         return 'sent';
       case CallStatus.accepted:
         return 'accepted';
+      case CallStatus.checkedIn:
+        return 'checked_in';
       case CallStatus.rejected:
         return 'rejected';
       case CallStatus.waitingList:
@@ -37,12 +40,14 @@ extension CallStatusX on CallStatus {
         return 'تم الإرسال';
       case CallStatus.accepted:
         return 'أنا قادم';
+      case CallStatus.checkedIn:
+        return 'تم تسجيل الوصول';
       case CallStatus.rejected:
         return 'اعتذار';
       case CallStatus.waitingList:
         return 'قائمة الانتظار';
       case CallStatus.arrived:
-        return 'وصل';
+        return 'تم التبرع';
       case CallStatus.expired:
         return 'منتهي';
       case CallStatus.medicalRejection:
@@ -59,6 +64,8 @@ CallStatus callStatusFromApi(String? value) {
       return CallStatus.sent;
     case 'accepted':
       return CallStatus.accepted;
+    case 'checked_in':
+      return CallStatus.checkedIn;
     case 'rejected':
       return CallStatus.rejected;
     case 'waiting_list':

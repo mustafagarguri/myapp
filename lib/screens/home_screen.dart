@@ -17,6 +17,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String userName = '';
   String userBloodType = '';
   bool isEligible = true;
+  DateTime? nextEligibleDate;
+  int? remainingDays;
   bool isLoading = true;
 
   final Color primaryRed = const Color(0xFFD32F2F);
@@ -48,7 +50,28 @@ class _HomeScreenState extends State<HomeScreen> {
           userBloodType = (user['blood_type'] as String?) ?? '--';
         }
 
-        isEligible = (user['is_available'] as bool?) ?? false;
+        final isAvailable = (user['is_available'] as bool?) ?? false;
+        final nextRaw = (user['next_eligible_date'] as String?) ?? '';
+        DateTime? parsedNext;
+        if (nextRaw.trim().isNotEmpty) {
+          parsedNext = DateTime.tryParse(nextRaw);
+        }
+
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final normalizedNext = parsedNext == null
+            ? null
+            : DateTime(parsedNext.year, parsedNext.month, parsedNext.day);
+
+        final eligible = isAvailable && (normalizedNext == null || !normalizedNext.isAfter(today));
+        int? daysRemaining;
+        if (!eligible && normalizedNext != null && normalizedNext.isAfter(today)) {
+          daysRemaining = normalizedNext.difference(today).inDays;
+        }
+
+        isEligible = eligible;
+        nextEligibleDate = normalizedNext;
+        remainingDays = daysRemaining;
       });
 
       if (mounted) {
@@ -84,6 +107,13 @@ class _HomeScreenState extends State<HomeScreen> {
     await ApiService.logout();
     if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+  }
+
+  String _formatDate(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
   }
 
   @override
@@ -152,7 +182,9 @@ class _HomeScreenState extends State<HomeScreen> {
           return const SizedBox.shrink();
         }
 
-        final goToTracking = activeCall.myStatus == CallStatus.accepted || activeCall.myStatus == CallStatus.arrived;
+        final goToTracking = activeCall.myStatus == CallStatus.accepted ||
+            activeCall.myStatus == CallStatus.checkedIn ||
+            activeCall.myStatus == CallStatus.arrived;
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
           padding: const EdgeInsets.all(14),
@@ -238,7 +270,19 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text('مرحباً، $userName', style: const TextStyle(color: Colors.white, fontSize: 16)),
                 Text(
-                  isEligible ? 'أنت مؤهل للتبرع اليوم.' : 'أنت غير متاح للتبرع حالياً.',
+                  () {
+                    if (isEligible) {
+                      return 'أنت مؤهل للتبرع اليوم.';
+                    }
+
+                    if (nextEligibleDate != null) {
+                      final dateText = _formatDate(nextEligibleDate!);
+                      final remaining = remainingDays != null ? 'متبقي $remainingDays يوم' : 'غير مؤهل حالياً';
+                      return '$remaining (الموعد القادم: $dateText).';
+                    }
+
+                    return 'أنت غير متاح للتبرع حالياً.';
+                  }(),
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                 ),
               ],
@@ -268,6 +312,14 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.pop(context);
               Navigator.pushNamed(context, '/edit-profile');
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.history, color: primaryRed),
+            title: const Text('سجل التبرعات'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/donation-history');
             },
           ),
           const Spacer(),

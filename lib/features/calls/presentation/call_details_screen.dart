@@ -46,8 +46,11 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
           }
 
           final isWaiting = call.myStatus == CallStatus.waitingList;
-          final canGoTracking = call.myStatus == CallStatus.accepted || call.myStatus == CallStatus.arrived;
-          final canAccept = call.uiType == CallUiType.acceptView && !canGoTracking;
+          final isCommitted = call.myStatus == CallStatus.accepted ||
+              call.myStatus == CallStatus.checkedIn ||
+              call.myStatus == CallStatus.arrived;
+          final canGoTracking = isCommitted;
+          final canAccept = call.uiType == CallUiType.acceptView && !isCommitted;
           final canWait = call.uiType == CallUiType.waitingListView && !isWaiting;
           final isCompleted = call.uiType == CallUiType.completedView;
 

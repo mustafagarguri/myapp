@@ -5,4 +5,6 @@
   static String callDetails(int callId) => '/calls/$callId';
   static const String respond = '/respond-to-call';
   static const String cancelAttendance = '/cancel-attendance';
+  static const String verifyArrival = '/verify-arrival';
+  static const String activeCall = '/user/active-call';
 }

@@ -30,8 +30,11 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
     _expireWatcher = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (!mounted) return;
       final state = context.read<CallState>();
-      if (state.remaining == Duration.zero && state.activeCall != null) {
-        await state.markExpiredIfNeeded(state.activeCall!.id);
+      final active = state.activeCall;
+      if (state.remaining == Duration.zero &&
+          active != null &&
+          active.myStatus == CallStatus.accepted) {
+        await state.markExpiredIfNeeded(active.id);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('انتهت صلاحية الطلب، تم تحويل الحالة إلى منتهي.')),
@@ -114,29 +117,55 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
             return const Center(child: Text('لا يوجد التزام نشط الآن'));
           }
 
+          final checkedIn = call.myStatus == CallStatus.checkedIn;
           final arrived = call.myStatus == CallStatus.arrived;
+          final showCountdown = !checkedIn && !arrived;
+          final canScanQr = call.myStatus == CallStatus.accepted;
+          final canCancel = call.myStatus == CallStatus.accepted;
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(18),
+              if (showCountdown)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text('الوقت المتبقي للوصول', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      Text(
+                        _formatDuration(state.remaining),
+                        style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: Colors.red),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    const Text('الوقت المتبقي للوصول', style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Text(
-                      _formatDuration(state.remaining),
-                      style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: Colors.red),
-                    ),
-                  ],
+              if (showCountdown) const SizedBox(height: 14),
+              if (checkedIn)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: const Text('تم تسجيل الوصول، بانتظار تأكيد المستشفى.'),
                 ),
-              ),
-              const SizedBox(height: 14),
+              if (arrived)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: const Text('تم تأكيد التبرع. شكراً لمساهمتك.'),
+                ),
+              if (checkedIn || arrived) const SizedBox(height: 14),
               Text('المستشفى: ${call.hospitalName}'),
               Text('المسافة التقديرية: ${call.distanceKm.toStringAsFixed(1)} كم'),
               const SizedBox(height: 12),
@@ -145,8 +174,23 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
                 icon: const Icon(Icons.map_outlined),
                 label: const Text('فتح الخرائط'),
               ),
+              if (canScanQr)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/call-qr-verify',
+                        arguments: {'callId': call.id},
+                      );
+                    },
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('مسح رمز الوصول'),
+                  ),
+                ),
               const SizedBox(height: 18),
-              if (!arrived)
+              if (canCancel)
                 TextButton(
                   onPressed: () => _cancelCommitment(context, call.id),
                   child: const Text('إلغاء المجيء'),
