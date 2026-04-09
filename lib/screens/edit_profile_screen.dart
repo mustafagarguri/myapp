@@ -1,6 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
+import 'package:myapp/app/blood_type_options.dart';
 import 'package:myapp/services/api_service.dart';
+import 'package:myapp/services/profile_payload_mapper.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -24,17 +26,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   int? _selectedBloodTypeId;
   DateTime? _dateOfBirth;
 
-  final Map<int, String> _bloodTypes = const {
-    1: 'A+',
-    2: 'A-',
-    3: 'B+',
-    4: 'B-',
-    5: 'O+',
-    6: 'O-',
-    7: 'AB+',
-    8: 'AB-',
-  };
-
   final Color primaryRed = const Color(0xFFD32F2F);
 
   @override
@@ -54,33 +45,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       final response = await ApiService.getUserProfile();
-      final user = _extractUser(response);
+      final profile = ProfilePayloadMapper.mapResponse(response);
 
       if (!mounted) return;
       setState(() {
-        _firstNameController.text = (user['first_name'] as String?) ?? '';
-        _lastNameController.text = (user['last_name'] as String?) ?? '';
-        _emailController.text = (user['email'] as String?) ?? '';
-        _phoneController.text = (user['phone_number'] as String?) ?? '';
-        _weightController.text = '${user['weight'] ?? ''}';
-
-        final bloodType = user['blood_type'];
-        if (bloodType is Map<String, dynamic>) {
-          _selectedBloodTypeId = (bloodType['id'] as num?)?.toInt();
-        } else {
-          _selectedBloodTypeId = (user['blood_type_id'] as num?)?.toInt();
-        }
-
-        final dob = user['date_of_birth'];
-        if (dob is String && dob.isNotEmpty) {
-          _dateOfBirth = DateTime.tryParse(dob);
-        }
+        _firstNameController.text = profile.firstName;
+        _lastNameController.text = profile.lastName;
+        _emailController.text = profile.email;
+        _phoneController.text = profile.phoneNumber;
+        _weightController.text = profile.weightText;
+        _selectedBloodTypeId = profile.bloodTypeId;
+        _dateOfBirth = profile.dateOfBirth;
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل جلب البيانات: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('فشل جلب البيانات: $e')));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -88,32 +69,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  Map<String, dynamic> _extractUser(Map<String, dynamic> response) {
-    final user = response['user'];
-    if (user is Map<String, dynamic>) return user;
-
-    final data = response['data'];
-    if (data is Map<String, dynamic>) {
-      final nested = data['user'];
-      if (nested is Map<String, dynamic>) return nested;
-      return data;
-    }
-
-    return response;
-  }
-
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedBloodTypeId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اختر فصيلة الدم')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('اختر فصيلة الدم')));
       return;
     }
     if (_dateOfBirth == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تاريخ الميلاد مطلوب')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تاريخ الميلاد مطلوب')));
       return;
     }
 
@@ -186,7 +153,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
       appBar: AppBar(
-        title: const Text('تعديل الملف الشخصي', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'تعديل الملف الشخصي',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: primaryRed,
       ),
@@ -203,29 +173,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     _buildSectionTitle('المعلومات الأساسية'),
                     TextFormField(
                       controller: _firstNameController,
-                      decoration: _customInputDecoration('الاسم الأول', Icons.person_outline),
-                      validator: (v) => v == null || v.isEmpty ? 'هذا الحقل مطلوب' : null,
+                      decoration: _customInputDecoration(
+                        'الاسم الأول',
+                        Icons.person_outline,
+                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'هذا الحقل مطلوب' : null,
                     ),
                     const SizedBox(height: 15),
                     TextFormField(
                       controller: _lastNameController,
-                      decoration: _customInputDecoration('اسم العائلة', Icons.badge_outlined),
-                      validator: (v) => v == null || v.isEmpty ? 'هذا الحقل مطلوب' : null,
+                      decoration: _customInputDecoration(
+                        'اسم العائلة',
+                        Icons.badge_outlined,
+                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'هذا الحقل مطلوب' : null,
                     ),
                     const SizedBox(height: 15),
                     TextFormField(
                       controller: _emailController,
                       readOnly: true,
-                      decoration: _customInputDecoration('البريد الإلكتروني', Icons.email_outlined),
+                      decoration: _customInputDecoration(
+                        'البريد الإلكتروني',
+                        Icons.email_outlined,
+                      ),
                     ),
                     const SizedBox(height: 15),
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: _customInputDecoration('رقم الهاتف', Icons.phone_android_outlined),
+                      decoration: _customInputDecoration(
+                        'رقم الهاتف',
+                        Icons.phone_android_outlined,
+                      ),
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'هذا الحقل مطلوب';
-                        if (v.length != 10) return 'رقم الهاتف يجب أن يكون 10 أرقام';
+                        if (v.length != 10) {
+                          return 'رقم الهاتف يجب أن يكون 10 أرقام';
+                        }
                         if (int.tryParse(v) == null) return 'أرقام فقط';
                         return null;
                       },
@@ -251,7 +237,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: primaryRed,
-        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(50), bottomRight: Radius.circular(50)),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(50),
+          bottomRight: Radius.circular(50),
+        ),
       ),
       child: Center(
         child: Stack(
@@ -283,7 +272,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10, right: 10),
-      child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+      child: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+      ),
     );
   }
 
@@ -294,7 +286,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: TextFormField(
             controller: _weightController,
             keyboardType: TextInputType.number,
-            decoration: _customInputDecoration('الوزن (كغ)', Icons.monitor_weight_outlined),
+            decoration: _customInputDecoration(
+              'الوزن (كغ)',
+              Icons.monitor_weight_outlined,
+            ),
             validator: (v) {
               if (v == null || v.isEmpty) return 'هذا الحقل مطلوب';
               final w = double.tryParse(v);
@@ -308,9 +303,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Expanded(
           child: DropdownButtonFormField<int>(
             initialValue: _selectedBloodTypeId,
-            decoration: _customInputDecoration('فصيلة الدم', Icons.bloodtype_outlined),
-            items: _bloodTypes.entries
-                .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+            decoration: _customInputDecoration(
+              'فصيلة الدم',
+              Icons.bloodtype_outlined,
+            ),
+            items: bloodTypeOptions.entries
+                .map(
+                  (e) => DropdownMenuItem(value: e.key, child: Text(e.value)),
+                )
                 .toList(),
             onChanged: (val) => setState(() => _selectedBloodTypeId = val),
             validator: (v) => v == null ? 'اختر فصيلة الدم' : null,
@@ -353,11 +353,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         onPressed: _isSaving ? null : _updateProfile,
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryRed,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
         ),
         child: _isSaving
             ? const CircularProgressIndicator(color: Colors.white)
-            : const Text('حفظ التغييرات', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            : const Text(
+                'حفظ التغييرات',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }
@@ -368,7 +377,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       prefixIcon: Icon(icon, color: primaryRed, size: 22),
       filled: true,
       fillColor: Colors.white,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: BorderSide.none,
+      ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
         borderSide: BorderSide(color: Colors.grey.shade100),
@@ -376,4 +388,3 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 }
-

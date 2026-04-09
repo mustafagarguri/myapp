@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +19,7 @@ class CallTrackingScreen extends StatefulWidget {
 
 class _CallTrackingScreenState extends State<CallTrackingScreen> {
   Timer? _expireWatcher;
+  bool _redirectedToHome = false;
 
   @override
   void initState() {
@@ -37,7 +38,9 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
         await state.markExpiredIfNeeded(active.id);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('انتهت صلاحية الطلب، تم تحويل الحالة إلى منتهي.')),
+          const SnackBar(
+            content: Text('انتهت صلاحية الطلب، تم تحويل الحالة إلى منتهي.'),
+          ),
         );
         Navigator.popUntil(context, ModalRoute.withName('/home'));
       }
@@ -50,6 +53,20 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
     super.dispose();
   }
 
+  void _redirectToHomeIfNeeded(BuildContext context) {
+    if (_redirectedToHome) return;
+    _redirectedToHome = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم إنهاء هذا الطلب ولم يعد متاحاً للمتابعة.'),
+        ),
+      );
+      Navigator.popUntil(context, ModalRoute.withName('/home'));
+    });
+  }
+
   String _formatDuration(Duration duration) {
     final h = duration.inHours.toString().padLeft(2, '0');
     final m = (duration.inMinutes % 60).toString().padLeft(2, '0');
@@ -58,7 +75,9 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
   }
 
   Future<void> _openMaps(double lat, double lng) async {
-    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -90,15 +109,12 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
 
     if (!context.mounted) return;
 
-    await context.read<CallState>().respondRejected(
-          callId,
-          reason: reason,
-        );
+    await context.read<CallState>().respondRejected(callId, reason: reason);
 
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم إلغاء المجيء بنجاح')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('تم إلغاء المجيء بنجاح')));
     Navigator.popUntil(context, ModalRoute.withName('/home'));
   }
 
@@ -114,6 +130,9 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
           }
 
           if (call == null) {
+            if (!state.loading && state.error == null) {
+              _redirectToHomeIfNeeded(context);
+            }
             return const Center(child: Text('لا يوجد التزام نشط الآن'));
           }
 
@@ -135,11 +154,18 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
                   ),
                   child: Column(
                     children: [
-                      const Text('الوقت المتبقي للوصول', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const Text(
+                        'الوقت المتبقي للوصول',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         _formatDuration(state.remaining),
-                        style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: Colors.red),
+                        style: const TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
                       ),
                     ],
                   ),
@@ -167,10 +193,13 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
                 ),
               if (checkedIn || arrived) const SizedBox(height: 14),
               Text('المستشفى: ${call.hospitalName}'),
-              Text('المسافة التقديرية: ${call.distanceKm.toStringAsFixed(1)} كم'),
+              Text(
+                'المسافة التقديرية: ${call.distanceKm.toStringAsFixed(1)} كم',
+              ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
-                onPressed: () => _openMaps(call.hospitalLatitude, call.hospitalLongitude),
+                onPressed: () =>
+                    _openMaps(call.hospitalLatitude, call.hospitalLongitude),
                 icon: const Icon(Icons.map_outlined),
                 label: const Text('فتح الخرائط'),
               ),
@@ -196,7 +225,10 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
                   child: const Text('إلغاء المجيء'),
                 ),
               const SizedBox(height: 18),
-              const Text('حالة المتابعة', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text(
+                'حالة المتابعة',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: 8),
               for (final row in state.tracking)
                 ListTile(

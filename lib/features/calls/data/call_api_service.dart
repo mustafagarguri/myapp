@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -11,7 +11,8 @@ import 'call_endpoints.dart';
 import 'call_local_store.dart';
 
 class CallApiService {
-  CallApiService({CallLocalStore? localStore}) : _localStore = localStore ?? CallLocalStore();
+  CallApiService({CallLocalStore? localStore})
+    : _localStore = localStore ?? CallLocalStore();
 
   static const Duration _timeout = Duration(seconds: 15);
   final CallLocalStore _localStore;
@@ -20,7 +21,8 @@ class CallApiService {
     return {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      if (requiresAuth && ApiService.token != null) 'Authorization': 'Bearer ${ApiService.token}',
+      if (requiresAuth && ApiService.token != null)
+        'Authorization': 'Bearer ${ApiService.token}',
     };
   }
 
@@ -39,7 +41,9 @@ class CallApiService {
           response = await http.get(url, headers: _headers()).timeout(_timeout);
           break;
         case 'POST':
-          response = await http.post(url, headers: _headers(), body: encodedBody).timeout(_timeout);
+          response = await http
+              .post(url, headers: _headers(), body: encodedBody)
+              .timeout(_timeout);
           break;
         default:
           throw const ApiException('طريقة الطلب غير مدعومة');
@@ -50,7 +54,10 @@ class CallApiService {
         return payload;
       }
 
-      throw ApiException(_extractError(payload, response.statusCode));
+      throw ApiException(
+        _extractError(payload, response.statusCode),
+        statusCode: response.statusCode,
+      );
     } catch (e) {
       if (e is ApiException) rethrow;
       throw const ApiException('تعذر الاتصال بالخادم');
@@ -74,7 +81,8 @@ class CallApiService {
     return 'فشل الطلب برمز الحالة $status';
   }
 
-  Future<void> saveActiveCallId(int callId) => _localStore.saveActiveCallId(callId);
+  Future<void> saveActiveCallId(int callId) =>
+      _localStore.saveActiveCallId(callId);
 
   Future<void> clearActiveCallId() => _localStore.clearActiveCallId();
 
@@ -91,7 +99,10 @@ class CallApiService {
 
   Future<CallDetails?> getActiveCallFromServer() async {
     try {
-      final response = await _request(method: 'GET', endpoint: CallEndpoints.activeCall);
+      final response = await _request(
+        method: 'GET',
+        endpoint: CallEndpoints.activeCall,
+      );
       final details = CallDetails.fromBackend(response);
       if (details.id > 0) {
         await _localStore.saveActiveCallId(details.id);
@@ -104,7 +115,10 @@ class CallApiService {
   }
 
   Future<CallDetails> getCallDetails(int callId) async {
-    final response = await _request(method: 'GET', endpoint: CallEndpoints.callDetails(callId));
+    final response = await _request(
+      method: 'GET',
+      endpoint: CallEndpoints.callDetails(callId),
+    );
     final details = CallDetails.fromBackend(response);
     await _localStore.saveActiveCallId(details.id);
     return details;
@@ -134,7 +148,8 @@ class CallApiService {
     );
 
     final returnedStatus = callStatusFromApi((response['status'] as String?));
-    if (returnedStatus == CallStatus.rejected || returnedStatus == CallStatus.expired) {
+    if (returnedStatus == CallStatus.rejected ||
+        returnedStatus == CallStatus.expired) {
       await _localStore.clearActiveCallId();
     } else {
       await _localStore.saveActiveCallId(callId);
@@ -166,10 +181,7 @@ class CallApiService {
     await _request(
       method: 'POST',
       endpoint: CallEndpoints.verifyArrival,
-      body: {
-        'call_id': callId,
-        'token': value,
-      },
+      body: {'call_id': callId, 'token': value},
     );
   }
 
@@ -178,4 +190,3 @@ class CallApiService {
     return const [];
   }
 }
-

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
@@ -62,7 +62,11 @@ class CallState extends ChangeNotifier {
       await _startRealtime(callId);
       _startPolling(callId);
     } catch (e) {
-      error = e.toString();
+      if (_isTerminalCallError(e)) {
+        await _clearActiveCallState();
+      } else {
+        error = e.toString();
+      }
     } finally {
       loading = false;
       notifyListeners();
@@ -112,10 +116,7 @@ class CallState extends ChangeNotifier {
       } catch (_) {
         await _api.clearActiveCallId();
       }
-      activeCall = null;
-      tracking = const [];
-      await _stopLiveSync();
-      notifyListeners();
+      await _clearActiveCallState();
     } finally {
       _expiring = false;
     }
@@ -163,10 +164,28 @@ class CallState extends ChangeNotifier {
         tracking = await _api.getCallTracking(callId);
         _applyCountdown(activeCall);
         notifyListeners();
-      } catch (_) {
+      } catch (e) {
+        if (_isTerminalCallError(e)) {
+          await _clearActiveCallState();
+          notifyListeners();
+          return;
+        }
         // Keep polling quietly.
       }
     });
+  }
+
+  bool _isTerminalCallError(Object error) {
+    if (error is! ApiException) return false;
+    return error.statusCode == 404 || error.statusCode == 410;
+  }
+
+  Future<void> _clearActiveCallState() async {
+    error = null;
+    activeCall = null;
+    tracking = const [];
+    await _api.clearActiveCallId();
+    await _stopLiveSync();
   }
 
   Future<void> _startRealtime(int callId) async {

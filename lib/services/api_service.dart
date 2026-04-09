@@ -17,6 +17,8 @@ class ApiService {
   // رابط API الافتراضي لبيئة Laravel المحلية (Android Emulator).
   static const String _defaultBaseUrl = 'http://10.0.2.2:8000/api';
   static const Duration _requestTimeout = Duration(seconds: 15);
+  static const String _pendingLatitudeKey = 'pending_latitude';
+  static const String _pendingLongitudeKey = 'pending_longitude';
 
   static String get baseUrl {
     final fromDefine = const String.fromEnvironment('API_BASE_URL');
@@ -35,6 +37,21 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
     _token = token;
+  }
+
+  static Future<void> _savePendingLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_pendingLatitudeKey, latitude);
+    await prefs.setDouble(_pendingLongitudeKey, longitude);
+  }
+
+  static Future<void> _clearPendingLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingLatitudeKey);
+    await prefs.remove(_pendingLongitudeKey);
   }
 
   static Future<void> logout() async {
@@ -268,6 +285,26 @@ class ApiService {
       },
       requiresAuth: true,
     );
+  }
+
+  static Future<void> queuePendingLocation({
+    required double latitude,
+    required double longitude,
+  }) {
+    return _savePendingLocation(latitude: latitude, longitude: longitude);
+  }
+
+  static Future<bool> flushPendingLocation() async {
+    if (_token == null || _token!.isEmpty) return false;
+
+    final prefs = await SharedPreferences.getInstance();
+    final latitude = prefs.getDouble(_pendingLatitudeKey);
+    final longitude = prefs.getDouble(_pendingLongitudeKey);
+    if (latitude == null || longitude == null) return false;
+
+    await updateLocation(latitude: latitude, longitude: longitude);
+    await _clearPendingLocation();
+    return true;
   }
 
   static Future<Map<String, dynamic>> updateFcmToken(String fcmToken) {

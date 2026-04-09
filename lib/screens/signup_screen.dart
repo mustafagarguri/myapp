@@ -1,5 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
+import '../app/blood_type_options.dart';
 import '../services/api_service.dart';
 import '../widgets/app_logo.dart';
 
@@ -26,17 +27,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   DateTime? _dateOfBirth;
   DateTime? _lastDonationDate;
 
-  final Map<int, String> _bloodTypes = const {
-    1: 'A+',
-    2: 'A-',
-    3: 'B+',
-    4: 'B-',
-    5: 'O+',
-    6: 'O-',
-    7: 'AB+',
-    8: 'AB-',
-  };
-
   final List<MapEntry<String, String>> _genders = const [
     MapEntry('male', 'ذكر'),
     MapEntry('female', 'أنثى'),
@@ -54,20 +44,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Future<void> _signup() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedBloodTypeId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اختر فصيلة الدم')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('اختر فصيلة الدم')));
       return;
     }
     if (_dateOfBirth == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اختر تاريخ الميلاد')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('اختر تاريخ الميلاد')));
       return;
     }
     if (_dateOfBirth!.isAfter(_maxBirthDate())) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يجب أن يكون العمر 18 سنة أو أكثر للتبرع')),
+        const SnackBar(
+          content: Text('يجب أن يكون العمر 18 سنة أو أكثر للتبرع'),
+        ),
       );
       return;
     }
@@ -91,13 +83,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('تم إنشاء الحساب بنجاح.'), backgroundColor: primaryRed),
+        SnackBar(
+          content: const Text('تم إنشاء الحساب بنجاح.'),
+          backgroundColor: primaryRed,
+        ),
       );
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل إنشاء الحساب: $e'), backgroundColor: Colors.redAccent),
+        SnackBar(
+          content: Text('فشل إنشاء الحساب: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
     } finally {
       if (mounted) {
@@ -153,7 +151,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('إنشاء حساب'), backgroundColor: primaryRed),
+      appBar: AppBar(
+        title: const Text('إنشاء حساب'),
+        backgroundColor: primaryRed,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -169,7 +170,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.person),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v == null || v.isEmpty ? 'الاسم الأول مطلوب' : null,
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'الاسم الأول مطلوب' : null,
               ),
               const SizedBox(height: 15),
               TextFormField(
@@ -179,7 +181,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.badge_outlined),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v == null || v.isEmpty ? 'اسم العائلة مطلوب' : null,
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'اسم العائلة مطلوب' : null,
               ),
               const SizedBox(height: 15),
               TextFormField(
@@ -190,7 +193,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.email),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v == null || !v.contains('@') ? 'أدخل بريدًا صحيحًا' : null,
+                validator: (v) =>
+                    v == null || !v.contains('@') ? 'أدخل بريدًا صحيحًا' : null,
               ),
               const SizedBox(height: 15),
               TextFormField(
@@ -204,7 +208,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'رقم الهاتف مطلوب';
                   if (v.length != 10) return 'رقم الهاتف يجب أن يكون 10 أرقام';
-                  if (int.tryParse(v) == null) return 'رقم الهاتف يجب أن يكون أرقاماً فقط';
+                  if (int.tryParse(v) == null) {
+                    return 'رقم الهاتف يجب أن يكون أرقاماً فقط';
+                  }
                   return null;
                 },
               ),
@@ -244,23 +250,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.lock),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    v == null || v.length < 8 ? 'كلمة المرور 8 أحرف على الأقل' : null,
+                validator: (v) => v == null || v.length < 8
+                    ? 'كلمة المرور 8 أحرف على الأقل'
+                    : null,
               ),
               const SizedBox(height: 15),
               DropdownButtonFormField<int>(
-                decoration: const InputDecoration(labelText: 'فصيلة الدم', border: OutlineInputBorder()),
-                items: _bloodTypes.entries
-                    .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                decoration: const InputDecoration(
+                  labelText: 'فصيلة الدم',
+                  border: OutlineInputBorder(),
+                ),
+                items: bloodTypeOptions.entries
+                    .map(
+                      (e) =>
+                          DropdownMenuItem(value: e.key, child: Text(e.value)),
+                    )
                     .toList(),
                 onChanged: (val) => setState(() => _selectedBloodTypeId = val),
                 validator: (v) => v == null ? 'اختر فصيلة الدم' : null,
               ),
               const SizedBox(height: 15),
               DropdownButtonFormField<String>(
-                decoration: const InputDecoration(labelText: 'الجنس (اختياري)', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'الجنس (اختياري)',
+                  border: OutlineInputBorder(),
+                ),
                 items: _genders
-                    .map((g) => DropdownMenuItem(value: g.key, child: Text(g.value)))
+                    .map(
+                      (g) =>
+                          DropdownMenuItem(value: g.key, child: Text(g.value)),
+                    )
                     .toList(),
                 onChanged: (val) => setState(() => _selectedGender = val),
               ),
@@ -301,7 +320,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   style: ElevatedButton.styleFrom(backgroundColor: primaryRed),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('إنشاء حساب', style: TextStyle(color: Colors.white, fontSize: 18)),
+                      : const Text(
+                          'إنشاء حساب',
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -312,4 +334,3 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 }
-

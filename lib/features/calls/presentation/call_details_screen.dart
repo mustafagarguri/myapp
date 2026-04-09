@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -18,11 +18,25 @@ class CallDetailsScreen extends StatefulWidget {
 }
 
 class _CallDetailsScreenState extends State<CallDetailsScreen> {
+  bool _redirectedToHome = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CallState>().loadCallDetails(widget.callId);
+    });
+  }
+
+  void _redirectToHomeIfNeeded(BuildContext context) {
+    if (_redirectedToHome) return;
+    _redirectedToHome = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لم يعد هذا الطلب متاحاً لديك.')),
+      );
+      Navigator.popUntil(context, ModalRoute.withName('/home'));
     });
   }
 
@@ -42,16 +56,22 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
 
           final call = state.activeCall;
           if (call == null) {
+            if (!state.loading && state.error == null) {
+              _redirectToHomeIfNeeded(context);
+            }
             return const Center(child: Text('لا يوجد نداء متاح حالياً'));
           }
 
           final isWaiting = call.myStatus == CallStatus.waitingList;
-          final isCommitted = call.myStatus == CallStatus.accepted ||
+          final isCommitted =
+              call.myStatus == CallStatus.accepted ||
               call.myStatus == CallStatus.checkedIn ||
               call.myStatus == CallStatus.arrived;
           final canGoTracking = isCommitted;
-          final canAccept = call.uiType == CallUiType.acceptView && !isCommitted;
-          final canWait = call.uiType == CallUiType.waitingListView && !isWaiting;
+          final canAccept =
+              call.uiType == CallUiType.acceptView && !isCommitted;
+          final canWait =
+              call.uiType == CallUiType.waitingListView && !isWaiting;
           final isCompleted = call.uiType == CallUiType.completedView;
 
           return ListView(
@@ -71,9 +91,18 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(call.hospitalName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                          Text(
+                            call.hospitalName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          const Text('نداء عاجل', style: TextStyle(color: Colors.red)),
+                          const Text(
+                            'نداء عاجل',
+                            style: TextStyle(color: Colors.red),
+                          ),
                         ],
                       ),
                     ),
@@ -81,33 +110,48 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              Text('فصيلة الدم المطلوبة: ${call.bloodType}', style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(
+                'فصيلة الدم المطلوبة: ${call.bloodType}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: 8),
               Text('المسافة: ${call.distanceKm.toStringAsFixed(1)} كم'),
               const SizedBox(height: 8),
-              Text('العدد المطلوب: ${call.requiredDonors} - الموافقون: ${call.acceptedCount}'),
+              Text(
+                'العدد المطلوب: ${call.requiredDonors} - الموافقون: ${call.acceptedCount}',
+              ),
               const SizedBox(height: 14),
               SizedBox(
                 height: 190,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: (call.hospitalLatitude == 0 && call.hospitalLongitude == 0)
+                  child:
+                      (call.hospitalLatitude == 0 &&
+                          call.hospitalLongitude == 0)
                       ? Container(
                           color: Colors.grey.shade200,
                           alignment: Alignment.center,
-                          child: const Text('إحداثيات المستشفى غير متاحة حالياً'),
+                          child: const Text(
+                            'إحداثيات المستشفى غير متاحة حالياً',
+                          ),
                         )
                       : GoogleMap(
                           myLocationButtonEnabled: false,
                           zoomControlsEnabled: false,
                           initialCameraPosition: CameraPosition(
-                            target: LatLng(call.hospitalLatitude, call.hospitalLongitude),
+                            target: LatLng(
+                              call.hospitalLatitude,
+                              call.hospitalLongitude,
+                            ),
                             zoom: 14,
                           ),
                           markers: {
                             Marker(
                               markerId: const MarkerId('hospital'),
-                              position: LatLng(call.hospitalLatitude, call.hospitalLongitude),
+                              position: LatLng(
+                                call.hospitalLatitude,
+                                call.hospitalLongitude,
+                              ),
                               infoWindow: InfoWindow(title: call.hospitalName),
                             ),
                           },
@@ -124,7 +168,9 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.green.shade200),
                   ),
-                  child: const Text('تم إغلاق هذا النداء أو الاكتفاء بالعدد المطلوب.'),
+                  child: const Text(
+                    'تم إغلاق هذا النداء أو الاكتفاء بالعدد المطلوب.',
+                  ),
                 ),
               if (canGoTracking)
                 ElevatedButton(
@@ -169,7 +215,9 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                     await state.respondWaiting(call.id);
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم إدخالك إلى قائمة الانتظار')),
+                      const SnackBar(
+                        content: Text('تم إدخالك إلى قائمة الانتظار'),
+                      ),
                     );
                   },
                   child: const Text('الاهتمام بالانتظار'),

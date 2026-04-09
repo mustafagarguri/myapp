@@ -1,4 +1,4 @@
-﻿import 'call_status.dart';
+import 'call_status.dart';
 
 class TrackingEntry {
   const TrackingEntry({
@@ -17,14 +17,37 @@ class TrackingEntry {
   final DateTime? respondedAt;
   final DateTime? arrivedAt;
 
+  static int _toInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) {
+      return int.tryParse(value) ?? double.tryParse(value)?.toInt() ?? 0;
+    }
+    return 0;
+  }
+
+  static double _toDouble(Object? value) {
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  static String? _toNonEmptyString(Object? value) {
+    if (value is String && value.trim().isNotEmpty) return value;
+    return null;
+  }
+
   factory TrackingEntry.fromJson(Map<String, dynamic> json) {
     return TrackingEntry(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      donorName: (json['donor_name'] as String?) ?? 'متبرع',
-      status: callStatusFromApi(json['status'] as String?),
-      distanceKm: (json['distance_at_response'] as num?)?.toDouble() ?? 0,
-      respondedAt: DateTime.tryParse((json['responded_at'] as String?) ?? ''),
-      arrivedAt: DateTime.tryParse((json['arrived_at'] as String?) ?? ''),
+      id: _toInt(json['id']),
+      donorName: _toNonEmptyString(json['donor_name']) ?? 'متبرع',
+      status: callStatusFromApi(_toNonEmptyString(json['status'])),
+      distanceKm: _toDouble(json['distance_at_response']),
+      respondedAt: DateTime.tryParse(
+        _toNonEmptyString(json['responded_at']) ?? '',
+      ),
+      arrivedAt: DateTime.tryParse(_toNonEmptyString(json['arrived_at']) ?? ''),
     );
   }
 }
