@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/blood_type_options.dart';
-import '../features/notifications/notification_service.dart';
 import '../services/api_service.dart';
-import '../services/location_sync_service.dart';
 import '../widgets/app_logo.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -69,7 +67,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ApiService.signup(
+      final response = await ApiService.signup(
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         email: _emailController.text.trim(),
@@ -83,18 +81,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
         lastDonationDate: _formatDate(_lastDonationDate),
       );
 
-      await NotificationService.instance.syncFcmTokenWithBackend();
-      final locationMessage =
-          await LocationSyncService.captureAndSendCurrentLocation();
-
       if (!mounted) return;
-      final snackMessage = locationMessage == null
-          ? 'تم إنشاء الحساب بنجاح.'
-          : 'تم إنشاء الحساب بنجاح. $locationMessage';
+      final snackMessage =
+          (response['message'] as String?) ??
+          'تم إنشاء الحساب. أرسلنا رمز التحقق إلى بريدك الإلكتروني.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(snackMessage), backgroundColor: primaryRed),
       );
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacementNamed(
+        context,
+        '/signup-verify',
+        arguments: {'email': _emailController.text.trim()},
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -15,6 +15,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/signup_screen.dart';
+import 'screens/signup_verification_screen.dart';
 import 'services/api_service.dart';
 
 Future<void> main() async {
@@ -32,7 +33,8 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => CallState(CallApiService(), RealtimeService())..loadActiveCall(),
+          create: (_) =>
+              CallState(CallApiService(), RealtimeService())..loadActiveCall(),
         ),
       ],
       child: MaterialApp(
@@ -66,6 +68,14 @@ class MyApp extends StatelessWidget {
         routes: {
           '/': (context) => const LoginScreen(),
           '/signup': (context) => const SignUpScreen(),
+          '/signup-verify': (context) {
+            final args =
+                ModalRoute.of(context)?.settings.arguments
+                    as Map<String, dynamic>? ??
+                const {};
+            final email = (args['email'] as String?) ?? '';
+            return SignUpVerificationScreen(email: email);
+          },
           '/home': (context) => const HomeScreen(),
           '/edit-profile': (context) => const EditProfileScreen(),
           '/reset-password': (context) => const ResetPasswordScreen(),
@@ -73,7 +83,8 @@ class MyApp extends StatelessWidget {
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/call-details') {
-            final args = (settings.arguments as Map<String, dynamic>?) ?? const {};
+            final args =
+                (settings.arguments as Map<String, dynamic>?) ?? const {};
             final callId = int.tryParse('${args['callId']}') ?? 0;
             return MaterialPageRoute(
               builder: (_) => CallDetailsScreen(callId: callId),
@@ -81,7 +92,8 @@ class MyApp extends StatelessWidget {
           }
 
           if (settings.name == '/call-tracking') {
-            final args = (settings.arguments as Map<String, dynamic>?) ?? const {};
+            final args =
+                (settings.arguments as Map<String, dynamic>?) ?? const {};
             final callId = int.tryParse('${args['callId']}') ?? 0;
             return MaterialPageRoute(
               builder: (_) => CallTrackingScreen(callId: callId),
@@ -89,7 +101,8 @@ class MyApp extends StatelessWidget {
           }
 
           if (settings.name == '/call-qr-verify') {
-            final args = (settings.arguments as Map<String, dynamic>?) ?? const {};
+            final args =
+                (settings.arguments as Map<String, dynamic>?) ?? const {};
             final callId = int.tryParse('${args['callId']}') ?? 0;
             return MaterialPageRoute(
               builder: (_) => CallQrVerifyScreen(callId: callId),

@@ -160,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       border: Border.all(color: Colors.grey.shade300),
                     ),
                     child: const Text(
-                      'لا توجد قائمة نداءات عامة حالياً في هذا الإصدار. ستظهر النداءات الفعلية عبر الإشعارات والنداء النشط.',
+                      'لا توجد نداءات عامة متاحة حاليًا. عند توفر حاجة متوافقة معك سنقوم بإشعارك مباشرة.',
                     ),
                   ),
                   const SizedBox(height: 20),

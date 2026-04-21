@@ -52,6 +52,17 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       if (!mounted) return;
+      if (e is ApiException && e.statusCode == 403) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: Colors.orange),
+        );
+        Navigator.pushNamed(
+          context,
+          '/signup-verify',
+          arguments: {'email': _emailController.text.trim()},
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('فشل تسجيل الدخول: $e'),

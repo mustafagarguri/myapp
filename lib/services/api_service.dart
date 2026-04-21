@@ -229,12 +229,34 @@ class ApiService {
       body: body,
     );
 
+    return data;
+  }
+
+  static Future<Map<String, dynamic>> verifyRegistrationOtp({
+    required String email,
+    required String otp,
+  }) async {
+    final data = await _request(
+      method: 'POST',
+      endpoint: '/register/verify-otp',
+      body: {'email': email, 'otp': otp},
+    );
+
     final token = data['data']?['token'] ?? data['token'];
-    if (token is String && token.isNotEmpty) {
-      await _saveToken(token);
+    if (token is! String || token.isEmpty) {
+      throw const ApiException('رمز الدخول غير موجود بعد تأكيد الحساب.');
     }
 
+    await _saveToken(token);
     return data;
+  }
+
+  static Future<Map<String, dynamic>> resendRegistrationOtp(String email) {
+    return _request(
+      method: 'POST',
+      endpoint: '/register/resend-otp',
+      body: {'email': email},
+    );
   }
 
   static Future<Map<String, dynamic>> getUserProfile() {
