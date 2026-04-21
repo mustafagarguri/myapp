@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../calls/data/call_local_store.dart';
+import 'notification_route_resolver.dart';
 import '../../services/api_service.dart';
 
 @pragma('vm:entry-point')
@@ -28,9 +29,11 @@ class NotificationService {
 
   static final NotificationService instance = NotificationService._();
 
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
-  final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _local =
+      FlutterLocalNotificationsPlugin();
   final CallLocalStore _store = CallLocalStore();
 
   bool _initialized = false;
@@ -47,7 +50,9 @@ class NotificationService {
 
     FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const initSettings = InitializationSettings(android: androidSettings);
     await _local.initialize(
       initSettings,
@@ -141,11 +146,11 @@ class NotificationService {
     final navigator = navigatorKey.currentState;
     if (navigator == null) return;
 
-    if (type == 'waiting_promoted' || action == 'EMERGENCY_PROMOTION') {
-      navigator.pushNamed('/call-tracking', arguments: {'callId': callId});
-      return;
-    }
-
-    navigator.pushNamed('/call-details', arguments: {'callId': callId});
+    final routeName = resolveCallNotificationRoute({
+      'type': type,
+      'action': action,
+      'call_id': callId,
+    });
+    navigator.pushNamed(routeName, arguments: {'callId': callId});
   }
 }

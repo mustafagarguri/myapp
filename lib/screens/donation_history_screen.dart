@@ -16,9 +16,13 @@ class DonationLedgerEntry {
   final DateTime? donatedAt;
 
   factory DonationLedgerEntry.fromJson(Map<String, dynamic> json) {
-    final donatedAtRaw = json['donated_at'] as String?;
+    final donatedAtRaw =
+        (json['donated_at'] ?? json['donation_date']) as String?;
     return DonationLedgerEntry(
-      callId: (json['call_id'] as num?)?.toInt() ?? 0,
+      callId:
+          (json['call_id'] as num?)?.toInt() ??
+          (json['id'] as num?)?.toInt() ??
+          0,
       hospitalName: (json['hospital_name'] as String?) ?? 'غير معروف',
       bloodType: (json['blood_type'] as String?) ?? '--',
       donatedAt: donatedAtRaw == null ? null : DateTime.tryParse(donatedAtRaw),
@@ -80,54 +84,56 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('تعذر تحميل السجل: $_error'),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _loadLedger,
+                      child: const Text('إعادة المحاولة'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : _entries.isEmpty
+          ? const Center(child: Text('لا توجد تبرعات مسجلة بعد.'))
+          : RefreshIndicator(
+              onRefresh: _loadLedger,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemBuilder: (context, index) {
+                  final item = _entries[index];
+                  return Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('تعذر تحميل السجل: $_error'),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: _loadLedger,
-                          child: const Text('إعادة المحاولة'),
+                        Text(
+                          'المستشفى: ${item.hospitalName}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
+                        const SizedBox(height: 6),
+                        Text('فصيلة الدم: ${item.bloodType}'),
+                        const SizedBox(height: 6),
+                        Text('تاريخ التبرع: ${_formatDate(item.donatedAt)}'),
                       ],
                     ),
-                  ),
-                )
-              : _entries.isEmpty
-                  ? const Center(child: Text('لا توجد تبرعات مسجلة بعد.'))
-                  : RefreshIndicator(
-                      onRefresh: _loadLedger,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemBuilder: (context, index) {
-                          final item = _entries[index];
-                          return Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('المستشفى: ${item.hospitalName}',
-                                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 6),
-                                Text('فصيلة الدم: ${item.bloodType}'),
-                                const SizedBox(height: 6),
-                                Text('تاريخ التبرع: ${_formatDate(item.donatedAt)}'),
-                              ],
-                            ),
-                          );
-                        },
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemCount: _entries.length,
-                      ),
-                    ),
+                  );
+                },
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemCount: _entries.length,
+              ),
+            ),
     );
   }
 }

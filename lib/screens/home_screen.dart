@@ -1,10 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:myapp/features/calls/domain/call_status.dart';
 import 'package:myapp/features/calls/presentation/call_state.dart';
 import 'package:myapp/services/api_service.dart';
 import 'package:myapp/widgets/app_logo.dart';
+
+import 'home_tips.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,7 +43,9 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         final first = (user['first_name'] as String?) ?? '';
         final last = (user['last_name'] as String?) ?? '';
-        userName = '$first $last'.trim().isEmpty ? 'المستخدم' : '$first $last'.trim();
+        userName = '$first $last'.trim().isEmpty
+            ? 'المستخدم'
+            : '$first $last'.trim();
 
         final bloodType = user['blood_type'];
         if (bloodType is Map<String, dynamic>) {
@@ -63,9 +67,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ? null
             : DateTime(parsedNext.year, parsedNext.month, parsedNext.day);
 
-        final eligible = isAvailable && (normalizedNext == null || !normalizedNext.isAfter(today));
+        final eligible =
+            isAvailable &&
+            (normalizedNext == null || !normalizedNext.isAfter(today));
         int? daysRemaining;
-        if (!eligible && normalizedNext != null && normalizedNext.isAfter(today)) {
+        if (!eligible &&
+            normalizedNext != null &&
+            normalizedNext.isAfter(today)) {
           daysRemaining = normalizedNext.difference(today).inDays;
         }
 
@@ -80,7 +88,10 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل تحميل الملف الشخصي: $e'), backgroundColor: Colors.redAccent),
+        SnackBar(
+          content: Text('فشل تحميل الملف الشخصي: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
     } finally {
       if (mounted) {
@@ -121,7 +132,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFBFBFB),
       appBar: AppBar(
-        title: const Text('وريد', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'وريد',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       drawer: _buildDrawer(context),
@@ -132,9 +146,13 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView(
                 children: [
                   _buildHeroSection(),
+                  _buildTipSection(),
                   _buildActiveCallSection(),
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 10,
+                    ),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -169,7 +187,9 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const Icon(Icons.error_outline, color: Colors.red),
                 const SizedBox(width: 8),
-                Expanded(child: Text('تعذر تحميل النداء النشط: ${callState.error}')),
+                Expanded(
+                  child: Text('تعذر تحميل النداء النشط: ${callState.error}'),
+                ),
                 TextButton(
                   onPressed: _fetchUserData,
                   child: const Text('إعادة المحاولة'),
@@ -182,7 +202,8 @@ class _HomeScreenState extends State<HomeScreen> {
           return const SizedBox.shrink();
         }
 
-        final goToTracking = activeCall.myStatus == CallStatus.accepted ||
+        final goToTracking =
+            activeCall.myStatus == CallStatus.accepted ||
             activeCall.myStatus == CallStatus.checkedIn ||
             activeCall.myStatus == CallStatus.arrived;
         return Container(
@@ -196,7 +217,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('ندائي النشط', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+              const Text(
+                'ندائي النشط',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
               const SizedBox(height: 8),
               Text('المستشفى: ${activeCall.hospitalName}'),
               Text('فصيلة الدم: ${activeCall.bloodType}'),
@@ -226,10 +250,87 @@ class _HomeScreenState extends State<HomeScreen> {
                           arguments: {'callId': activeCall.id},
                         );
                       },
-                      child: Text(goToTracking ? 'متابعة الالتزام' : 'الرد الآن'),
+                      child: Text(
+                        goToTracking ? 'متابعة الالتزام' : 'الرد الآن',
+                      ),
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTipSection() {
+    return Consumer<CallState>(
+      builder: (context, callState, _) {
+        final tip = selectHomeTip(
+          now: DateTime.now(),
+          isEligible: isEligible,
+          hasActiveCall: callState.activeCall != null,
+        );
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.red.shade100),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.shade50,
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(Icons.favorite_outline, color: primaryRed),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'نصيحة اليوم',
+                      style: TextStyle(
+                        color: primaryRed,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      tip.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      tip.body,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -254,7 +355,9 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: (isEligible ? statusGreen : Colors.orange).withValues(alpha: 0.3),
+            color: (isEligible ? statusGreen : Colors.orange).withValues(
+              alpha: 0.3,
+            ),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -268,7 +371,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('مرحباً، $userName', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                Text(
+                  'مرحباً، $userName',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
                 Text(
                   () {
                     if (isEligible) {
@@ -277,13 +383,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     if (nextEligibleDate != null) {
                       final dateText = _formatDate(nextEligibleDate!);
-                      final remaining = remainingDays != null ? 'متبقي $remainingDays يوم' : 'غير مؤهل حالياً';
+                      final remaining = remainingDays != null
+                          ? 'متبقي $remainingDays يوم'
+                          : 'غير مؤهل حالياً';
                       return '$remaining (الموعد القادم: $dateText).';
                     }
 
                     return 'أنت غير متاح للتبرع حالياً.';
                   }(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
               ],
             ),
@@ -299,7 +411,10 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           UserAccountsDrawerHeader(
             decoration: BoxDecoration(color: primaryRed),
-            accountName: Text(userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+            accountName: Text(
+              userName,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             accountEmail: Text('فصيلة الدم: $userBloodType'),
             currentAccountPicture: const CircleAvatar(
               backgroundColor: Colors.white,

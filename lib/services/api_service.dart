@@ -1,7 +1,8 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../app/blood_type_options.dart';
 
 class ApiException implements Exception {
   const ApiException(this.message, {this.statusCode});
@@ -57,11 +58,7 @@ class ApiService {
   static Future<void> logout() async {
     if (_token != null) {
       try {
-        await _request(
-          method: 'POST',
-          endpoint: '/logout',
-          requiresAuth: true,
-        );
+        await _request(method: 'POST', endpoint: '/logout', requiresAuth: true);
       } catch (_) {
         // نضمن تنظيف التوكن محلياً حتى لو فشل الخروج من السيرفر.
       }
@@ -171,14 +168,14 @@ class ApiService {
     return 'فشل الطلب برمز الحالة $status';
   }
 
-  static Future<Map<String, dynamic>> login(String email, String password) async {
+  static Future<Map<String, dynamic>> login(
+    String email,
+    String password,
+  ) async {
     final data = await _request(
       method: 'POST',
       endpoint: '/login',
-      body: {
-        'email': email,
-        'password': password,
-      },
+      body: {'email': email, 'password': password},
     );
 
     final token = data['data']?['token'] ?? data['token'];
@@ -203,6 +200,11 @@ class ApiService {
     String? gender,
     String? lastDonationDate,
   }) async {
+    final bloodType = bloodTypeOptions[bloodTypeId];
+    if (bloodType == null) {
+      throw const ApiException('فصيلة الدم المحددة غير صالحة.');
+    }
+
     final y = dateOfBirth.year.toString().padLeft(4, '0');
     final m = dateOfBirth.month.toString().padLeft(2, '0');
     final d = dateOfBirth.day.toString().padLeft(2, '0');
@@ -213,7 +215,7 @@ class ApiService {
       'email': email,
       'phone_number': phoneNumber,
       'password': password,
-      'blood_type_id': bloodTypeId,
+      'blood_type': bloodType,
       'weight': weight,
       'date_of_birth': '$y-$m-$d',
       if (height != null) 'height': height,
@@ -251,6 +253,11 @@ class ApiService {
     required int bloodTypeId,
     required DateTime dateOfBirth,
   }) {
+    final bloodType = bloodTypeOptions[bloodTypeId];
+    if (bloodType == null) {
+      throw const ApiException('فصيلة الدم المحددة غير صالحة.');
+    }
+
     final y = dateOfBirth.year.toString().padLeft(4, '0');
     final m = dateOfBirth.month.toString().padLeft(2, '0');
     final d = dateOfBirth.day.toString().padLeft(2, '0');
@@ -260,7 +267,7 @@ class ApiService {
       'last_name': lastName,
       'phone_number': phoneNumber,
       'weight': weight,
-      'blood_type_id': bloodTypeId,
+      'blood_type': bloodType,
       'date_of_birth': '$y-$m-$d',
     };
 
@@ -279,10 +286,7 @@ class ApiService {
     return _request(
       method: 'PATCH',
       endpoint: '/user/location',
-      body: {
-        'latitude': latitude,
-        'longitude': longitude,
-      },
+      body: {'latitude': latitude, 'longitude': longitude},
       requiresAuth: true,
     );
   }
@@ -331,21 +335,40 @@ class ApiService {
     return const [];
   }
 
-  // backend الحالي لا يدعم reset password عبر API موبايل مباشر.
   static Future<Map<String, dynamic>> forgotPassword(String email) async {
-    throw const ApiException(
-      'استعادة كلمة المرور غير مدعومة حالياً عبر تطبيق الموبايل في هذا الباك اند.',
+    return _request(
+      method: 'POST',
+      endpoint: '/password/forgot',
+      body: {'email': email},
+    );
+  }
+
+  static Future<Map<String, dynamic>> verifyPasswordResetOtp({
+    required String email,
+    required String otp,
+  }) {
+    return _request(
+      method: 'POST',
+      endpoint: '/password/verify-otp',
+      body: {'email': email, 'otp': otp},
     );
   }
 
   static Future<Map<String, dynamic>> resetPassword({
     required String email,
-    required String token,
+    required String resetToken,
     required String newPassword,
+    required String passwordConfirmation,
   }) async {
-    throw const ApiException(
-      'إعادة تعيين كلمة المرور غير مدعومة حالياً عبر API الموبايل في هذا الباك اند.',
+    return _request(
+      method: 'POST',
+      endpoint: '/password/reset',
+      body: {
+        'email': email,
+        'reset_token': resetToken,
+        'password': newPassword,
+        'password_confirmation': passwordConfirmation,
+      },
     );
   }
 }
-

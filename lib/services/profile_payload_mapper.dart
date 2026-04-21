@@ -1,9 +1,13 @@
+import '../app/blood_type_options.dart';
+
 class ProfilePayloadMapper {
   const ProfilePayloadMapper._();
 
   static ProfileData mapResponse(Map<String, dynamic> response) {
     final user = _extractUser(response);
     final bloodType = _asMap(user['blood_type']);
+    final bloodTypeName =
+        _asString(bloodType?['name']) ?? _asString(user['blood_type']) ?? '--';
 
     return ProfileData(
       firstName: _asString(user['first_name']) ?? '',
@@ -11,9 +15,11 @@ class ProfilePayloadMapper {
       email: _asString(user['email']) ?? '',
       phoneNumber: _asString(user['phone_number']) ?? '',
       weightText: _asString(user['weight']) ?? '',
-      bloodTypeId: _asInt(bloodType?['id']) ?? _asInt(user['blood_type_id']),
-      bloodTypeName:
-          _asString(bloodType?['name']) ?? _asString(user['blood_type']) ?? '--',
+      bloodTypeId:
+          _asInt(bloodType?['id']) ??
+          _asInt(user['blood_type_id']) ??
+          _bloodTypeIdFromName(bloodTypeName),
+      bloodTypeName: bloodTypeName,
       isAvailable: _asBool(user['is_available']) ?? false,
       dateOfBirth: _parseDate(user['date_of_birth']),
       nextEligibleDate: _parseDate(user['next_eligible_date']),
@@ -61,6 +67,13 @@ class ProfilePayloadMapper {
       final normalized = value.trim().toLowerCase();
       if (normalized == 'true' || normalized == '1') return true;
       if (normalized == 'false' || normalized == '0') return false;
+    }
+    return null;
+  }
+
+  static int? _bloodTypeIdFromName(String value) {
+    for (final entry in bloodTypeOptions.entries) {
+      if (entry.value == value) return entry.key;
     }
     return null;
   }

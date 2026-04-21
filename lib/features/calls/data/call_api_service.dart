@@ -91,7 +91,12 @@ class CallApiService {
     if (callId == null || callId <= 0) return null;
 
     try {
-      return await getCallDetails(callId);
+      final details = await getCallDetails(callId);
+      if (_isResolvedCall(details)) {
+        await _localStore.clearActiveCallId();
+        return null;
+      }
+      return details;
     } catch (_) {
       return null;
     }
@@ -104,6 +109,10 @@ class CallApiService {
         endpoint: CallEndpoints.activeCall,
       );
       final details = CallDetails.fromBackend(response);
+      if (_isResolvedCall(details)) {
+        await _localStore.clearActiveCallId();
+        return null;
+      }
       if (details.id > 0) {
         await _localStore.saveActiveCallId(details.id);
         return details;
@@ -173,6 +182,10 @@ class CallApiService {
     required int callId,
     required String token,
   }) async {
+    if (callId <= 0) {
+      throw const ApiException('معرف النداء غير صالح.');
+    }
+
     final value = token.trim();
     if (value.isEmpty) {
       throw const ApiException('رمز التحقق فارغ.');
@@ -181,12 +194,30 @@ class CallApiService {
     await _request(
       method: 'POST',
       endpoint: CallEndpoints.verifyArrival,
-      body: {'call_id': callId, 'token': value},
+      body: {'verification_token': value},
     );
   }
 
   Future<List<TrackingEntry>> getCallTracking(int callId) async {
-    // لا يوجد endpoint donor-tracking في backend الحالي؛ نعيد قائمة فارغة مؤقتاً.
-    return const [];
+    // Keep parsing tolerant while the backend response is standardized.
+    final response = await _request(
+      method: 'GET',
+      endpoint: CallEndpoints.callTracking(callId),
+    );
+
+    final raw = response['tracking'] ?? response['data'] ?? response['entries'];
+    if (raw is! List) {
+      return const [];
+    }
+
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(TrackingEntry.fromJson)
+        .toList();
+  }
+
+  bool _isResolvedCall(CallDetails details) {
+    return details.uiType == CallUiType.completedView ||
+        details.myStatus == CallStatus.donated;
   }
 }

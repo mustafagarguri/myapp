@@ -36,7 +36,9 @@ class CallState extends ChangeNotifier {
     try {
       activeCall = await _api.getActiveCallFromServer();
       activeCall ??= await _api.getActiveCall();
-      if (activeCall != null) {
+      if (_isResolvedCall(activeCall)) {
+        await _clearActiveCallState();
+      } else if (activeCall != null) {
         await _startRealtime(activeCall!.id);
         _startPolling(activeCall!.id);
       } else {
@@ -57,6 +59,10 @@ class CallState extends ChangeNotifier {
 
     try {
       activeCall = await _api.getCallDetails(callId);
+      if (_isResolvedCall(activeCall)) {
+        await _clearActiveCallState();
+        return;
+      }
       tracking = await _api.getCallTracking(callId);
       _applyCountdown(activeCall);
       await _startRealtime(callId);
@@ -161,6 +167,11 @@ class CallState extends ChangeNotifier {
     _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
       try {
         activeCall = await _api.getCallDetails(callId);
+        if (_isResolvedCall(activeCall)) {
+          await _clearActiveCallState();
+          notifyListeners();
+          return;
+        }
         tracking = await _api.getCallTracking(callId);
         _applyCountdown(activeCall);
         notifyListeners();
@@ -178,6 +189,12 @@ class CallState extends ChangeNotifier {
   bool _isTerminalCallError(Object error) {
     if (error is! ApiException) return false;
     return error.statusCode == 404 || error.statusCode == 410;
+  }
+
+  bool _isResolvedCall(CallDetails? details) {
+    if (details == null) return false;
+    return details.uiType == CallUiType.completedView ||
+        details.myStatus == CallStatus.donated;
   }
 
   Future<void> _clearActiveCallState() async {

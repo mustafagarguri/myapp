@@ -1,10 +1,10 @@
-﻿import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../features/calls/presentation/call_state.dart';
 import '../features/notifications/notification_service.dart';
 import '../services/api_service.dart';
+import '../services/location_sync_service.dart';
 import '../widgets/app_logo.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -35,21 +35,28 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text.trim(),
       );
 
-      await _captureAndSendLocation();
+      final locationMessage =
+          await LocationSyncService.captureAndSendCurrentLocation();
       await NotificationService.instance.syncFcmTokenWithBackend();
       if (!mounted) return;
       await context.read<CallState>().loadActiveCall();
 
       if (!mounted) return;
       final displayName = _extractUserName(data) ?? 'المستخدم';
+      final snackMessage = locationMessage == null
+          ? 'مرحباً $displayName'
+          : 'مرحباً $displayName. $locationMessage';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('مرحباً $displayName'), backgroundColor: primaryRed),
+        SnackBar(content: Text(snackMessage), backgroundColor: primaryRed),
       );
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل تسجيل الدخول: $e'), backgroundColor: Colors.redAccent),
+        SnackBar(
+          content: Text('فشل تسجيل الدخول: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
     } finally {
       if (mounted) {
@@ -83,49 +90,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return null;
-  }
-
-  Future<void> _captureAndSendLocation() async {
-    if (!await Geolocator.isLocationServiceEnabled()) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('خدمة الموقع غير مفعلة.')),
-        );
-      }
-      return;
-    }
-
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم رفض إذن الموقع. يمكنك تفعيله من الإعدادات.'),
-          ),
-        );
-      }
-      return;
-    }
-
-    try {
-      final position = await Geolocator.getCurrentPosition();
-
-      await ApiService.updateLocation(
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر تحديث الموقع حالياً.')),
-        );
-      }
-    }
   }
 
   @override
@@ -190,8 +154,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'البريد الإلكتروني مطلوب';
-                      if (!value.contains('@')) return 'صيغة البريد الإلكتروني غير صحيحة';
+                      if (value == null || value.isEmpty) {
+                        return 'البريد الإلكتروني مطلوب';
+                      }
+                      if (!value.contains('@')) {
+                        return 'صيغة البريد الإلكتروني غير صحيحة';
+                      }
                       return null;
                     },
                   ),
@@ -215,17 +183,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'كلمة المرور مطلوبة';
+                      if (value == null || value.isEmpty) {
+                        return 'كلمة المرور مطلوبة';
+                      }
                       return null;
                     },
                   ),
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () => Navigator.pushNamed(context, '/reset-password'),
+                      onPressed: () =>
+                          Navigator.pushNamed(context, '/reset-password'),
                       child: Text(
                         'نسيت كلمة المرور؟',
-                        style: TextStyle(color: primaryRed, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: primaryRed,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -238,13 +212,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryRed,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
                       ),
                       child: _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
                               'تسجيل الدخول',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                     ),
                   ),
@@ -252,7 +231,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('ليس لديك حساب؟ ', style: TextStyle(color: darkGrey)),
+                      Text(
+                        'ليس لديك حساب؟ ',
+                        style: TextStyle(color: darkGrey),
+                      ),
                       GestureDetector(
                         onTap: () => Navigator.pushNamed(context, '/signup'),
                         child: Text(
@@ -276,4 +258,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

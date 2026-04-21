@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../app/blood_type_options.dart';
+import '../features/notifications/notification_service.dart';
 import '../services/api_service.dart';
+import '../services/location_sync_service.dart';
 import '../widgets/app_logo.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -81,12 +83,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
         lastDonationDate: _formatDate(_lastDonationDate),
       );
 
+      await NotificationService.instance.syncFcmTokenWithBackend();
+      final locationMessage =
+          await LocationSyncService.captureAndSendCurrentLocation();
+
       if (!mounted) return;
+      final snackMessage = locationMessage == null
+          ? 'تم إنشاء الحساب بنجاح.'
+          : 'تم إنشاء الحساب بنجاح. $locationMessage';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('تم إنشاء الحساب بنجاح.'),
-          backgroundColor: primaryRed,
-        ),
+        SnackBar(content: Text(snackMessage), backgroundColor: primaryRed),
       );
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
@@ -207,9 +213,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'رقم الهاتف مطلوب';
-                  if (v.length != 10) return 'رقم الهاتف يجب أن يكون 10 أرقام';
+                  if (v.length != 10) {
+                    return 'رقم الهاتف يجب أن يكون 10 أرقام';
+                  }
                   if (int.tryParse(v) == null) {
-                    return 'رقم الهاتف يجب أن يكون أرقاماً فقط';
+                    return 'رقم الهاتف يجب أن يكون أرقامًا فقط';
                   }
                   return null;
                 },

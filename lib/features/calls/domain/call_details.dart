@@ -1,6 +1,13 @@
 import 'call_status.dart';
 
-enum CallUiType { acceptView, waitingListView, completedView, unknown }
+enum CallUiType {
+  acceptView,
+  waitingListView,
+  trackingView,
+  inHospital,
+  completedView,
+  unknown,
+}
 
 CallUiType callUiTypeFromApi(String? value) {
   switch (value) {
@@ -8,6 +15,10 @@ CallUiType callUiTypeFromApi(String? value) {
       return CallUiType.acceptView;
     case 'waiting_list_view':
       return CallUiType.waitingListView;
+    case 'tracking_view':
+      return CallUiType.trackingView;
+    case 'in_hospital':
+      return CallUiType.inHospital;
     case 'completed_view':
       return CallUiType.completedView;
     default:
@@ -75,7 +86,7 @@ class CallDetails {
       requiredDonors: requiredDonors,
       acceptedCount: currentFilled,
       arrivedCount: (call['arrived_count'] as num?)?.toInt() ?? 0,
-      distanceKm: (json['distance_km'] as num?)?.toDouble() ?? 0,
+      distanceKm: _toDouble(json['distance_km'] ?? call['distance_km']),
       hospitalLatitude: _toDouble(
         call['hospital_latitude'] ?? call['hospital_lat'],
       ),

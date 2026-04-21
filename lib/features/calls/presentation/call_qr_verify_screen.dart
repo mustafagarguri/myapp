@@ -19,6 +19,21 @@ class _CallQrVerifyScreenState extends State<CallQrVerifyScreen> {
   bool _isVerifying = false;
   String? _lastToken;
 
+  String _friendlyQrError(Object error) {
+    final raw = error.toString().trim();
+    final normalized = raw.toLowerCase();
+
+    if (normalized.contains('route') && normalized.contains('not defined')) {
+      return 'تم تسجيل الوصول، لكن حدث خلل داخلي في الإشعار. حاول تحديث الشاشة.';
+    }
+
+    if (normalized.contains('network') || normalized.contains('internet')) {
+      return 'تعذر الاتصال بالخادم أثناء التحقق من الرمز.';
+    }
+
+    return raw.isEmpty ? 'فشل التحقق من الرمز.' : raw;
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -42,14 +57,18 @@ class _CallQrVerifyScreenState extends State<CallQrVerifyScreen> {
       await context.read<CallState>().verifyArrivalByQr(widget.callId, token);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تسجيل الوصول، بانتظار تأكيد المستشفى.')),
+        const SnackBar(
+          content: Text('تم تسجيل الوصول، بانتظار تأكيد المستشفى.'),
+        ),
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل التحقق: $e')),
-      );
+      final message = _friendlyQrError(e);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('فشل التحقق: $message')));
+      _lastToken = null;
       setState(() => _isVerifying = false);
     }
   }
@@ -60,10 +79,7 @@ class _CallQrVerifyScreenState extends State<CallQrVerifyScreen> {
       appBar: AppBar(title: const Text('مسح رمز الوصول')),
       body: Stack(
         children: [
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-          ),
+          MobileScanner(controller: _controller, onDetect: _onDetect),
           Center(
             child: Container(
               width: 260,
@@ -86,7 +102,7 @@ class _CallQrVerifyScreenState extends State<CallQrVerifyScreen> {
               ),
               child: Text(
                 _isVerifying
-                    ? 'جاري التحقق من الرمز...'
+                    ? 'جار التحقق من الرمز...'
                     : 'وجه الكاميرا إلى رمز QR للتحقق من الوصول.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white),

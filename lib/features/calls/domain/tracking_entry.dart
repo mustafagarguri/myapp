@@ -43,7 +43,7 @@ class TrackingEntry {
       id: _toInt(json['id']),
       donorName: _toNonEmptyString(json['donor_name']) ?? 'متبرع',
       status: callStatusFromApi(_toNonEmptyString(json['status'])),
-      distanceKm: _toDouble(json['distance_at_response']),
+      distanceKm: _toDouble(json['distance_at_response'] ?? json['distance']),
       respondedAt: DateTime.tryParse(
         _toNonEmptyString(json['responded_at']) ?? '',
       ),

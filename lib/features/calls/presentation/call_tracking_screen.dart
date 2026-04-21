@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../domain/cancel_reason.dart';
+import '../domain/call_details.dart';
 import '../domain/call_status.dart';
 import 'call_state.dart';
 
@@ -136,11 +137,17 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
             return const Center(child: Text('لا يوجد التزام نشط الآن'));
           }
 
-          final checkedIn = call.myStatus == CallStatus.checkedIn;
-          final arrived = call.myStatus == CallStatus.arrived;
-          final showCountdown = !checkedIn && !arrived;
-          final canScanQr = call.myStatus == CallStatus.accepted;
-          final canCancel = call.myStatus == CallStatus.accepted;
+          final trackingInProgress =
+              call.uiType == CallUiType.trackingView ||
+              call.myStatus == CallStatus.accepted;
+          final inHospital =
+              call.uiType == CallUiType.inHospital ||
+              call.myStatus == CallStatus.checkedIn ||
+              call.myStatus == CallStatus.arrived;
+          final completed = call.uiType == CallUiType.completedView;
+          final showCountdown = trackingInProgress;
+          final canScanQr = trackingInProgress;
+          final canCancel = trackingInProgress;
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -171,7 +178,7 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
                   ),
                 ),
               if (showCountdown) const SizedBox(height: 14),
-              if (checkedIn)
+              if (inHospital)
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -181,7 +188,7 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
                   ),
                   child: const Text('تم تسجيل الوصول، بانتظار تأكيد المستشفى.'),
                 ),
-              if (arrived)
+              if (completed)
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -191,7 +198,7 @@ class _CallTrackingScreenState extends State<CallTrackingScreen> {
                   ),
                   child: const Text('تم تأكيد التبرع. شكراً لمساهمتك.'),
                 ),
-              if (checkedIn || arrived) const SizedBox(height: 14),
+              if (inHospital || completed) const SizedBox(height: 14),
               Text('المستشفى: ${call.hospitalName}'),
               Text(
                 'المسافة التقديرية: ${call.distanceKm.toStringAsFixed(1)} كم',

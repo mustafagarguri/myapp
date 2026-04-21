@@ -1,10 +1,11 @@
-﻿enum CallStatus {
+enum CallStatus {
   sent,
   accepted,
   checkedIn,
   rejected,
   waitingList,
   arrived,
+  donated,
   expired,
   medicalRejection,
   unknown,
@@ -25,6 +26,8 @@ extension CallStatusX on CallStatus {
         return 'waiting_list';
       case CallStatus.arrived:
         return 'arrived';
+      case CallStatus.donated:
+        return 'donated';
       case CallStatus.expired:
         return 'expired';
       case CallStatus.medicalRejection:
@@ -47,6 +50,8 @@ extension CallStatusX on CallStatus {
       case CallStatus.waitingList:
         return 'قائمة الانتظار';
       case CallStatus.arrived:
+        return 'تم الوصول';
+      case CallStatus.donated:
         return 'تم التبرع';
       case CallStatus.expired:
         return 'منتهي';
@@ -72,6 +77,8 @@ CallStatus callStatusFromApi(String? value) {
       return CallStatus.waitingList;
     case 'arrived':
       return CallStatus.arrived;
+    case 'donated':
+      return CallStatus.donated;
     case 'expired':
       return CallStatus.expired;
     case 'medical_rejection':
